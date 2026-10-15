@@ -1,4 +1,4 @@
-name: Kernel build
+name: Kernel build and QEMU smoke test
 
 on:
   push:
@@ -6,16 +6,38 @@ on:
   workflow_dispatch:
 
 jobs:
-  kernel:
+  build-and-boot:
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
-      - name: Compile freestanding kernel and entry assembly
+      - name: Install build and emulator tools
         run: |
-          gcc -std=gnu11 -O2 -Wall -Wextra -Werror -ffreestanding -fno-stack-protector -fno-pic -fno-pie -m64 -mno-red-zone -mcmodel=kernel -mgeneral-regs-only -Iinclude -c kernel/kernel.c -o /tmp/nova-kernel.o
-          gcc -m64 -ffreestanding -c kernel/entry.S -o /tmp/nova-entry.o
-      - name: Link kernel ELF
+          sudo apt-get update
+          sudo apt-get install -y build-essential git xorriso qemu-system-x86
+      - name: Build kernel and bootable ISO
+        run: make
+      - name: Smoke-test BIOS boot in QEMU
+        shell: bash
         run: |
-          ld -nostdlib -z max-page-size=0x1000 -T linker.ld -o /tmp/nova-kernel.elf /tmp/nova-entry.o /tmp/nova-kernel.o
-          readelf -h /tmp/nova-kernel.elf | grep -q 'ELF64'
-          readelf -h /tmp/nova-kernel.elf | grep -q 'Advanced Micro Devices X86-64'
+          set -o pipefail
+          timeout 20s qemu-system-x86_64 \
+            -machine q35 -m 256M -cdrom build/novaos.iso -boot d \
+            -display none -serial stdio -monitor none -no-reboot -no-shutdown \
+            2>&1 | tee build/qemu-serial.log || status=$?
+          if grep -q "NOVA OS: initialization complete; halted safely" build/qemu-serial.log; then
+            echo "NOVA OS serial boot marker found."
+          else
+            echo "Boot smoke test failed (timeout exit is expected only if the marker was printed)."
+            cat build/qemu-serial.log
+            exit 1
+          fi
+      - name: Upload build artifacts
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: novaos-kernel-and-logs
+          path: |
+            build/kernel.elf
+            build/novaos.iso
+            build/qemu-serial.log
