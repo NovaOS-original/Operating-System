@@ -1,0 +1,8 @@
+build/
+vendor/
+*.o
+*.elf
+*.iso
+*.img
+*.bin
+*.log
