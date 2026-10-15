@@ -8,7 +8,7 @@ KERNEL := $(BUILD)/kernel.elf
 ISO := $(BUILD)/novaos.iso
 LIMINE_VERSION := v12.9.3
 LIMINE_ROOT := vendor/limine
-LIMINE_BIN := $(LIMINE_ROOT)/bin
+LIMINE_BIN := $(LIMINE_ROOT)
 
 .PHONY: all kernel iso run debug clean limine check-toolchain
 all: iso
@@ -32,11 +32,14 @@ $(KERNEL): $(BUILD)/entry.o $(BUILD)/kernel.o linker.ld
 	$(LD) $(LDFLAGS) -o $@ $(BUILD)/entry.o $(BUILD)/kernel.o
 
 limine:
-	@if [ ! -f $(LIMINE_BIN)/limine-bios.sys ]; then \
-		mkdir -p $(LIMINE_ROOT); \
+	@if [ ! -f $(LIMINE_BIN)/limine-bios.sys ] || [ ! -f $(LIMINE_BIN)/limine ]; then \
+		rm -rf $(LIMINE_ROOT); \
 		git clone --depth=1 --branch=$(LIMINE_VERSION)-binary https://github.com/limine-bootloader/limine.git $(LIMINE_ROOT); \
 	fi
-	@test -f $(LIMINE_BIN)/limine-bios.sys || (echo "Limine binary files missing; check the pinned branch and package layout."; exit 1)
+	@test -f $(LIMINE_BIN)/limine-bios.sys || (echo "Limine BIOS binary missing; check the pinned branch and repository access."; exit 1)
+	@test -f $(LIMINE_BIN)/limine-uefi-cd.bin || (echo "Limine UEFI CD image missing."; exit 1)
+	@test -f $(LIMINE_BIN)/BOOTX64.EFI || (echo "Limine UEFI bootloader missing."; exit 1)
+	@test -x $(LIMINE_BIN)/limine || (echo "Limine installer tool missing or not executable."; exit 1)
 
 iso: kernel limine
 	@command -v xorriso >/dev/null || (echo "Missing xorriso."; exit 1)
