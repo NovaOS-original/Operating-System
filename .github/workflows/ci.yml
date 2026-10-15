@@ -1,0 +1,21 @@
+name: Kernel build
+
+on:
+  push:
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  kernel:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Compile freestanding kernel and entry assembly
+        run: |
+          gcc -std=gnu11 -O2 -Wall -Wextra -Werror -ffreestanding -fno-stack-protector -fno-pic -fno-pie -m64 -mno-red-zone -mcmodel=kernel -mgeneral-regs-only -Iinclude -c kernel/kernel.c -o /tmp/nova-kernel.o
+          gcc -m64 -ffreestanding -c kernel/entry.S -o /tmp/nova-entry.o
+      - name: Link kernel ELF
+        run: |
+          ld -nostdlib -z max-page-size=0x1000 -T linker.ld -o /tmp/nova-kernel.elf /tmp/nova-entry.o /tmp/nova-kernel.o
+          readelf -h /tmp/nova-kernel.elf | grep -q 'ELF64'
+          readelf -h /tmp/nova-kernel.elf | grep -q 'Advanced Micro Devices X86-64'
