@@ -1,17 +1,16 @@
-# Milestone 01 — Kernel diagnostics
+# Milestone 01 — Kernel diagnostics and boot smoke test
 
-## Added
-- Added COM1 serial initialization and bounded serial output.
-- Added boot progress messages for kernel entry, framebuffer status, and safe halt.
-- Added framebuffer banner diagnostics.
-- CI compiles the freestanding C kernel and assembly entry point, links the ELF, and verifies its architecture.
+## Implemented
+- Freestanding x86-64 entry point and ELF linker script.
+- Limine framebuffer request and simple NOVA OS banner.
+- COM1 serial diagnostics and safe halt loop.
+- Makefile recipes for kernel, pinned Limine download, hybrid ISO creation, QEMU run/debug.
+- GitHub Actions workflow to build the ISO and attempt a QEMU serial smoke test.
 
-## Verification completed
-The kernel C source compiled with GCC using `-Wall -Wextra -Werror`. The assembly entry compiled, and GNU `ld` produced a statically linked ELF64 x86-64 kernel.
+## Acceptance criteria
+- CI compiles and links the kernel.
+- ISO creation succeeds using the pinned Limine binary branch.
+- QEMU serial output contains `NOVA OS: initialization complete; halted safely`.
 
-## Not yet verified
-- Limine ISO creation
-- BIOS or UEFI boot
-- QEMU runtime framebuffer output and serial output
-
-The next milestone is to pin a compatible Limine release, create the ISO reproducibly, and test booting in QEMU before adding memory management.
+## Status
+The workflow has been committed, but its result must be inspected in GitHub Actions before calling the milestone boot-verified. No physical hardware test has been performed.
